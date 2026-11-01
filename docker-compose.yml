@@ -1,0 +1,19 @@
+x-app: &app
+  build: .
+  image: ai-customer-support
+  env_file: .env
+  restart: unless-stopped
+  logging:
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  api:
+    <<: *app
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  poller:
+    <<: *app
+    command: ["python", "-m", "app.poller"]
