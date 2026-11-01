@@ -1,11 +1,4 @@
-"""Supabase（Postgres）访问层，来自课程 Database 页，逻辑未改动。
-
-`start_event` 就是去重闸门：只有「新消息」或「上次失败的消息」能让 insert 成功，
-其它情况返回 None，pipeline 直接跳过。所以同一封信不会被处理两遍。
-
-注意：这里的 `gmail_message_id` 实际存的是 IMAP UID（字符串），
-只是沿用课程的列名，好让后面的 Dashboard 查询能照抄。
-"""
+"""Supabase/Postgres 访问层：事件、工单、消息、知识库。"""
 
 import psycopg
 from psycopg.rows import dict_row
@@ -99,7 +92,6 @@ def save_message(
         )
 
 
-# --- 知识库读取（AI 的 tool 用这两个）----------------------------------------- #
 
 
 def list_sections() -> list[str]:
@@ -118,7 +110,6 @@ def get_section(section: str) -> list[dict]:
         ).fetchall()
 
 
-# --- 看板用的读取/编辑（Admin dashboard 页）----------------------------------- #
 
 
 def list_events(limit: int = 100) -> list[dict]:

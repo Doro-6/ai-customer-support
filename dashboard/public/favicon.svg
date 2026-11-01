@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Harbor &amp; Pine">
+  <rect width="32" height="32" rx="7" fill="#1c1917"/>
+  <path d="M16 4.5 23.5 13.6h-3.4l5.2 6.6H6.7l5.2-6.6H8.5Z" fill="#fafaf9"/>
+  <rect x="14.5" y="20.2" width="3" height="6.3" rx="1" fill="#fafaf9"/>
+</svg>

@@ -1,9 +1,4 @@
-"""把 knowledge_base/*.md 灌进 Supabase 的 knowledge_base 表，一行一个 ## 小节。
-
-    uv run python -m scripts.seed_knowledge_base
-
-可重复执行：冲突时更新 content，所以改完 Markdown 再跑一次即可。
-"""
+"""把 knowledge_base/*.md 灌进数据库，一行一个 ## 小节。"""
 
 from pathlib import Path
 

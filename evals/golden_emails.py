@@ -1,8 +1,4 @@
-"""18 条「黄金邮件」：每条都写明人肉判断的 section 和 action。
-
-这是回归基线。改提示词之前先跑它，改完再跑；否则你修好一封邮件、
-同时悄悄弄坏另外两封，而你根本不知道。
-"""
+"""18 条黄金邮件：每条写明人肉判断的 section 和 action。"""
 
 
 def email(sender: str, subject: str, body: str) -> str:

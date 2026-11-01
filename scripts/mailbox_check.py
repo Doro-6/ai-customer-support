@@ -1,17 +1,4 @@
-"""连真实邮箱做一次端到端检查（需要 .env 里的 MAIL_ADDRESS / MAIL_AUTH_CODE）。
-
-对应课程 `scripts/gmail_check.py`，但多做了几件排查用的事：
-
-    uv run python -m scripts.mailbox_check                 # 只读：登录、列文件夹、看最新一封
-    uv run python -m scripts.mailbox_check --uid 12        # 指定 IMAP UID
-    uv run python -m scripts.mailbox_check --mark          # 顺便打上 ai-processed 标签
-    uv run python -m scripts.mailbox_check --reply         # 顺便回一封信（会真的发出去）
-
-跑完 --reply 之后再跑一次不带参数的，列表里**不应该**出现你刚发的那封回信
-（它已经被打上 ai-processed），这就是标签机制在工作。
-
-前提：QQ 邮箱「设置 → 帐户 → POP3/IMAP 服务」已开启，并生成了授权码。
-"""
+"""连真实邮箱做一次端到端检查，需要 .env 里的邮箱凭据。"""
 
 from __future__ import annotations
 

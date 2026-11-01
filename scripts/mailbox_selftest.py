@@ -17,6 +17,7 @@ from app.gmail import (
     strip_quoted,
 )
 from app.gmail import _parse_message  # 内部解析函数，这里专门测它
+from app.gmail import _reply_subject  # 同上：回复主题的构造逻辑
 from app.guards import skip_reason
 
 OWN = "harborandpine.support@qq.com"
@@ -113,7 +114,6 @@ def main() -> int:
     check("自家回复标为 support", "Harbor & Pine support (Harbor & Pine support" in rendered, True)
     check("两封都在", rendered.count(":") >= 2, True)
 
-    # ---- 护栏：这层决定「绝对不能回」，必须逐条验证 ----
     normal = {"labelIds": []}
     check("护栏：自己发出的邮件被拦", skip_reason({"labelIds": ["SENT"]}, {}, OWN), "sent by us")
     check(
@@ -141,6 +141,23 @@ def main() -> int:
         skip_reason(normal, {"from": f"X <{OWN.upper()}>"}, OWN),
         "from our own address",
     )
+
+    check("主题：正常主题加 Re:", _reply_subject("Where is my pump?"), "Re: Where is my pump?")
+    check("主题：已带 Re: 不重复加", _reply_subject("Re: Where is my pump?"), "Re: Where is my pump?")
+    check("主题：大小写 Re: 也算", _reply_subject("RE: hi"), "RE: hi")
+    check("主题：空主题用兜底", _reply_subject(""), "Re: Harbor & Pine support")
+    check("主题：纯空格用兜底", _reply_subject("   "), "Re: Harbor & Pine support")
+    check(
+        "主题：QQ 的 (无主题) 占位符换成兜底",
+        _reply_subject("(无主题)"),
+        "Re: Harbor & Pine support",
+    )
+    check(
+        "主题：英文占位符同样处理",
+        _reply_subject("(no subject)"),
+        "Re: Harbor & Pine support",
+    )
+    check("主题：None 也不炸", _reply_subject(None), "Re: Harbor & Pine support")
 
     print()
     if failures:

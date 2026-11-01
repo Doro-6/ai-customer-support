@@ -12,7 +12,9 @@ services:
   api:
     <<: *app
     ports:
-      - "127.0.0.1:8080:8080"
+      # 端口可配置：服务器上 8080 可能被别的服务占用（例如预装的 searxng），
+      # 在服务器的 .env 里写 DASHBOARD_PORT=8081 即可，容器内始终是 8080。
+      - "127.0.0.1:${DASHBOARD_PORT:-8080}:8080"
 
   poller:
     <<: *app

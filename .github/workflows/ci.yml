@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: python checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Compile
+        run: uv run python -m compileall -q app scripts evals playground
+
+      # Offline: no mailbox, no database, no model key. Covers MIME parsing,
+      # the four guard rules and reply-subject construction.
+      - name: Self-test
+        run: uv run python -m scripts.mailbox_selftest
+
+  dashboard:
+    name: dashboard build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # tsc -b runs as part of the build, so this catches type errors too.
+      - name: Build
+        run: npm run build

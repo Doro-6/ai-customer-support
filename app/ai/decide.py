@@ -1,8 +1,4 @@
-"""把分类、起草、规则串成一次决策。
-
-decide 完全不知道 Gmail / IMAP 的存在：它收一个纯文本 thread，返回 Decision。
-所以 evals 可以直接调用它，不需要邮箱。
-"""
+"""把分类、起草、规则串成一次决策。decide 不知道邮箱存在，所以 evals 能直接调它。"""
 
 from app.ai.agent import write_reply
 from app.ai.classifier import classify
@@ -11,7 +7,6 @@ from app.ai.schemas import Decision
 
 
 def decide(thread: str, has_attachments: bool = False) -> Decision:
-    """跑一封邮件的 AI 步骤。模型提议，这个函数决定。"""
     classification = classify(thread)
 
     def escalate(reason: str, proposed_action: str | None = None) -> Decision:

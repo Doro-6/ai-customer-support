@@ -1,14 +1,4 @@
-"""把 supabase/migrations 里的 SQL 应用到数据库，不需要安装 Supabase CLI。
-
-    uv run python -m scripts.db_migrate --status    # 只体检：连得上吗、缺哪些表
-    uv run python -m scripts.db_migrate             # 缺表就执行迁移
-    uv run python -m scripts.db_migrate --check     # 演示查询：看各表行数
-
-设计说明：
-- 迁移文件按文件名排序执行；
-- 只跑「还缺表」的情况，所以重复执行是安全的；
-- 每条迁移在单个事务里跑，失败不会留下半张表。
-"""
+"""把 supabase/migrations 里的 SQL 应用到数据库，不需要 Supabase CLI。"""
 
 from __future__ import annotations
 

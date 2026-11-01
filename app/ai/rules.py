@@ -1,8 +1,4 @@
-"""换货规则：模型只报告事实，Python 决定下一步。
-
-这套逻辑是「模型提议、代码决定」的落点。没有订单系统，所以什么都不会真的发货；
-算出来的 step 会写进 ticket 的 proposed_action，由同事去执行。
-"""
+"""换货规则：模型报告事实，Python 决定下一步。"""
 
 from app.ai.schemas import Issue
 
@@ -11,7 +7,6 @@ CUSTOMER_STEPS = {"valve-check", "ask-details"}
 
 
 def resolve_issue(issue: Issue) -> str:
-    """决定一个报障邮件的下一步。模型报告，Python 决定。"""
     step = next_step(issue)
     if step not in CUSTOMER_STEPS | {"escalate"} and not issue.order_number:
         return "ask-details"

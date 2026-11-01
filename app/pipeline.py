@@ -1,10 +1,4 @@
-"""一封信的完整处理：护栏 → 认领事件 → 入库 → AI 决策 → 回复/转人工 → 打标签。
-
-对应课程的 AI pipeline 页。与课程的差异只有两处：
-1. 事件主键用 Message-ID 身份（`message["_key"]`），不用 IMAP UID；
-   UID 在邮箱重建后会复用，会让新来信被误判成「已处理」而静默丢弃。
-2. 保留了 PIPELINE_DRY_RUN 开关：入库照做，但不真发信，用于演练。
-"""
+"""一封信的完整处理：护栏、认领、入库、AI 决策、回复或转人工、打标签。"""
 
 import logging
 from email.utils import parseaddr

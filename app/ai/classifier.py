@@ -1,9 +1,4 @@
-"""分类器：用小模型把来信分到板块，并判断是否必须转人工。
-
-与课程的一处差异：课程在模块级别写 `classifier = Agent(...)`，但 Pydantic AI 在
-**构造时**就要 DEEPSEEK_API_KEY，缺 key 会让整个模块 import 失败（连 poller 都起不来）。
-所以这里改成惰性构造：第一次真正调用时才建 Agent，缺 key 时报错信息也更准确。
-"""
+"""分类器：小模型分板块，并判断是否必须转人工。"""
 
 from __future__ import annotations
 
@@ -49,8 +44,7 @@ _agent: Agent | None = None
 
 
 def _build() -> Agent:
-    """DeepSeek 默认开思考模式，而思考模式下服务端拒绝强制的 tool_choice，
-    结构化输出会退化成 auto 从而频繁重试。所以这里显式关掉 thinking。"""
+    """DeepSeek 思考模式下 tool_choice 不能强制，会拖垮结构化输出，所以关掉 thinking。"""
     return Agent(
         OpenAIChatModel(
             settings.classifier_model.split(":")[-1], provider="deepseek"

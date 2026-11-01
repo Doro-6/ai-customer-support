@@ -1,14 +1,4 @@
-"""轮询进程：每隔 POLL_INTERVAL_SECONDS 扫一次收件箱。
-
-作为独立进程运行，不要放进 FastAPI：
-1. 多个 API worker 会变成多个 poller，同一封信被处理多次；
-2. IMAP 客户端是同步的，塞进 API 会阻塞请求。
-
-    uv run python -m app.poller
-
-与课程版本的唯一差别：用 `with Gmail()` 而不是 `gmail = Gmail()`。
-IMAP 是有状态长连接，每轮不关会一直累积，QQ 对同账号并发连接有限制。
-"""
+"""轮询进程：每 POLL_INTERVAL_SECONDS 秒扫一次收件箱。"""
 
 import logging
 import time

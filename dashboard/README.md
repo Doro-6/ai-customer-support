@@ -1,21 +1,10 @@
-# React + TypeScript + Vite + shadcn/ui
+# Dashboard
 
-This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
-
-## Adding components
-
-To add components to your app, run the following command:
+Vite + React + shadcn admin UI for the support bot. Served by FastAPI from `dashboard/dist`;
+see the [root README](../README.md) for the full picture.
 
 ```bash
-npx shadcn@latest add button
-```
-
-This will place the ui components in the `src/components` directory.
-
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button"
+npm install
+npm run dev      # proxy to the API on :8000, see vite.config.ts
+npm run build    # output in dist/, picked up by app/main.py
 ```

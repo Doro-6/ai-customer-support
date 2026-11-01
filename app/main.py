@@ -1,11 +1,4 @@
-"""FastAPI 应用：健康检查 + 看板 API + 托管前端构建产物。
-
-来自课程 Admin dashboard 页。三个设计点值得注意：
-1. `require_login` 用 HTTP Basic，且 `dashboard_password` 为空时**一律拒绝**——
-   所以没配密码时接口是关着的，不是敞开的。
-2. 前端构建产物挂在 `/`，但注册在最后，所以 `/api/*` 和 `/health` 优先匹配。
-3. `POST /api/poll` 让看板上能手动触发一轮轮询，不用等 30 秒。
-"""
+"""FastAPI：健康检查、看板 API、托管前端构建产物。"""
 
 import secrets
 from pathlib import Path

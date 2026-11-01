@@ -1,28 +1,4 @@
-"""邮箱客户端：用 IMAP + SMTP 替代课程的 Gmail API 版本。
-
-对外接口与课程 `app/gmail.py` 完全一致，所以 `pipeline.py`、`guards.py`、
-`poller.py`、`evals/` 都**不需要修改**：
-
-    Gmail()  .address  .label_ids
-    .list_new_message_ids(max_results)  .get_message(id)  .get_thread(thread_id)
-    .add_label(id, name)  .is_escalated(thread)  .send_reply(message, body)
-    get_headers(message)  get_body(message)  has_attachments(message)
-    strip_quoted(text)  format_thread(thread, own_address)
-
-与 Gmail 版的差异（都是有意的）：
-
-1. **label 用 IMAP 文件夹模拟**。`add_label` 是 COPY 一份到同名文件夹，原邮件
-   留在 INBOX，所以语义与 Gmail 标签一致：邮件既在收件箱，也带标签。
-2. **没有原生「会话」概念**。threadId 取 `References` 头里的第一个 Message-ID
-   （会话根消息）；没有 References 时用自身的 Message-ID。
-   会话重组靠 `SEARCH HEADER MESSAGE-ID` + `SEARCH HEADER REFERENCES`。
-3. **send_reply 会把回复副本 APPEND 回 INBOX**（同时打上 ai-processed），
-   这样 `format_thread` 能看到机器人自己之前说过什么，行为与 Gmail 线程一致。
-   这份副本会被 `guards.skip_reason` 按发件人地址跳过——课程本来就是这么设计
-   防自问自答的。
-4. 正文解析、编码、引文剥离按国内邮箱的实际情况加固：支持 gb2312/gb18030，
-   HTML-only 邮件会转成纯文本，识别「原始邮件」「在…写道」等引文标记。
-"""
+"""IMAP + SMTP 邮箱客户端，对外接口与课程的 Gmail 版一致。"""
 
 from __future__ import annotations
 
@@ -50,7 +26,35 @@ logger = logging.getLogger(__name__)
 PROCESSED_LABEL = "ai-processed"
 ESCALATED_LABEL = "needs-human"
 
-# 引文分隔标记：命中即认为后面都是被引用的历史内容。
+# 有些服务器（实测 QQ）发信人没写主题时，会把字面量占位符写进 Subject 头，
+# 而不是留空。原样加个 "Re: " 拼回去就变成 "Re: (无主题)"——既难看，
+# 也容易被反垃圾策略当作畸形主题拦掉。这些占位符一律换成正常主题。
+_NO_SUBJECT_PLACEHOLDERS = {
+    "(无主题)",
+    "无主题",
+    "(無主題)",
+    "無主題",
+    "(无标题)",
+    "无标题",
+    "(no subject)",
+    "no subject",
+    "(no title)",
+    "(empty)",
+    "(空)",
+}
+
+_SUBJECT_FALLBACK = "Harbor & Pine support"
+
+
+def _reply_subject(original: str) -> str:
+    """构造回复主题：空主题或占位符用兜底主题，已带 Re: 则不重复加。"""
+    subject = (original or "").strip()
+    if not subject or subject.lower() in _NO_SUBJECT_PLACEHOLDERS:
+        subject = _SUBJECT_FALLBACK
+    if subject.lower().startswith("re:"):
+        return subject
+    return f"Re: {subject}"
+
 _QUOTE_TAGS = (
     "-----original message-----",
     "-----原始邮件-----",
@@ -63,17 +67,11 @@ _MESSAGE_ID = re.compile(rb"<[^<>@\s]+@[^<>\s]+>")
 _FETCH_UID = re.compile(rb"UID (\d+)")
 _FOLDER_SAFE = re.compile(r"^[A-Za-z0-9_.\-]+$")
 
-# 取头时统一用这一组字段：Message-ID 用于会话，Date+Subject+From 用于缺 ID 时的身份回退。
 _HEADER_FIELDS = "MESSAGE-ID REFERENCES DATE SUBJECT FROM TO"
 
 
 def _identity(headers: dict[str, str]) -> str:
-    """给一封邮件算稳定身份，用来跨文件夹判断「这封是否已打过标签」。
-
-    大多数邮件有 Message-ID，直接用它。但实测这个邮箱里有几封（运营商通知类）
-    没有 Message-ID 或格式不合法，此时回退到 Date+Subject+From 的哈希。
-    注意不能用 UID 兜底：INBOX 和标签文件夹是两个独立的 UID 空间。
-    """
+    """邮件的稳定身份：优先 Message-ID，缺失时回退 Date+Subject+From 哈希。"""
     message_id = headers.get("message-id", "").strip()
     if message_id:
         return message_id
@@ -83,13 +81,9 @@ def _identity(headers: dict[str, str]) -> str:
     return "h:" + hashlib.sha1(basis.encode("utf-8", "replace")).hexdigest()
 
 
-# --------------------------------------------------------------------------- #
-# 连接与 IMAP 底层工具
-# --------------------------------------------------------------------------- #
 
 
 def _qg(value: str) -> str:
-    """把字符串包装成 IMAP 带引号参数。"""
     return '"%s"' % value.replace("\\", "\\\\").replace('"', '\\"')
 
 
@@ -99,7 +93,6 @@ def _chunks(items: list[int], size: int):
 
 
 def _uid_set(uids: list[int]) -> str:
-    """把 UID 列表压成 IMAP 序列集，例如 [20,21,22,25] -> '20:22,25'。"""
     ordered = sorted(set(uids))
     if not ordered:
         return ""
@@ -116,7 +109,6 @@ def _uid_set(uids: list[int]) -> str:
 
 
 def _uids(conn: imaplib.IMAP4_SSL, *criteria: str | None) -> list[int]:
-    """执行 UID SEARCH，返回升序 UID 列表。"""
     typ, data = conn.uid("SEARCH", *criteria)
     if typ != "OK" or not data or not data[0]:
         return []
@@ -124,7 +116,6 @@ def _uids(conn: imaplib.IMAP4_SSL, *criteria: str | None) -> list[int]:
 
 
 def _first_literal(data) -> bytes | None:
-    """从 FETCH 响应里取出第一个 literal（邮件原文）。"""
     for item in data:
         if isinstance(item, tuple) and len(item) == 2:
             return item[1]
@@ -134,12 +125,7 @@ def _first_literal(data) -> bytes | None:
 def _fetch_headers(
     conn: imaplib.IMAP4_SSL, uids: list[int], fields: str
 ) -> dict[int, dict[str, str]]:
-    """批量取 UID -> {小写头名: 值}。
-
-    QQ 邮箱的 IMAP SEARCH 会忽略搜索条件（搜 SUBJECT 也返回全部邮件，
-    搜 HEADER MESSAGE-ID 又返回 0 封），所以凡是「按头筛选」都必须
-    自己抓下来在本地比对，不能交给服务器。
-    """
+    """批量取 UID -> 头字典。QQ 的 IMAP 会忽略搜索条件，所以筛选都在本地做。"""
     result: dict[int, dict[str, str]] = {}
     for chunk in _chunks(uids, 60):
         typ, data = "NO", None
@@ -177,7 +163,6 @@ def _fetch_headers(
 
 
 def _fetch_raw_many(conn: imaplib.IMAP4_SSL, uids: list[int]) -> dict[int, bytes]:
-    """批量取 UID -> 邮件原文。"""
     result: dict[int, bytes] = {}
     for chunk in _chunks(uids, 10):  # 正文大，块开小一点
         typ, data = conn.uid("FETCH", ",".join(str(uid) for uid in chunk), "(BODY.PEEK[])")
@@ -199,9 +184,6 @@ def _fetch_raw_many(conn: imaplib.IMAP4_SSL, uids: list[int]) -> dict[int, bytes
     return result
 
 
-# --------------------------------------------------------------------------- #
-# MIME 解析
-# --------------------------------------------------------------------------- #
 
 
 def _decode_header_value(value: str | None) -> str:
@@ -273,7 +255,6 @@ def _thread_key(headers: dict[str, str]) -> str:
 
 
 def _parse_message(raw: bytes, uid: str) -> dict:
-    """把原始邮件解析成与 Gmail 版字段对齐的 dict。"""
     message = email.message_from_bytes(raw)
     headers: dict[str, str] = {}
     for name, value in message.items():
@@ -300,19 +281,10 @@ def _parse_message(raw: bytes, uid: str) -> dict:
     }
 
 
-# --------------------------------------------------------------------------- #
-# 客户端
-# --------------------------------------------------------------------------- #
 
 
 def _with_reconnect(method):
-    """IMAP 长连接会被服务端断掉（实测 QQ 会在命令执行中途 EOF）。
-
-    `_imap()` 里虽然有 noop 探活，但那只覆盖「命令还没发」的情况；
-    命令已经开始、socket 才断的话，异常会直接冒到调用方。
-    这个装饰器在中断时关掉旧连接、重连、重试一次。
-    只用于幂等操作——send_reply 不能用，否则 SMTP 已发出时会重复发信。
-    """
+    """断线自动重连并重试一次。仅用于幂等操作，send_reply 不能重试。"""
 
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
@@ -327,7 +299,6 @@ def _with_reconnect(method):
 
 
 class Gmail:
-    """名字沿用课程的 `Gmail`，实现换成 IMAP/SMTP（默认 QQ 邮箱）。"""
 
     def __init__(self) -> None:
         # 先声明连接字段：__init__ 中途抛异常时 __del__ 仍会被调用。
@@ -343,7 +314,6 @@ class Gmail:
             )
         self.label_ids = self._ensure_labels()
 
-    # -- 连接 --------------------------------------------------------------- #
 
     def _imap(self) -> imaplib.IMAP4_SSL:
         if self._conn is not None:
@@ -398,7 +368,6 @@ class Gmail:
         if typ != "OK":
             raise RuntimeError(f"无法打开文件夹 {folder!r}：{data!r}")
 
-    # -- 标签（IMAP 文件夹） -------------------------------------------------- #
 
     def _ensure_labels(self) -> dict[str, str]:
         conn = self._imap()
@@ -422,13 +391,7 @@ class Gmail:
         return ids
 
     def _labelled_message_ids(self, label: str, limit: int | None = None) -> set[str]:
-        """取标签文件夹里所有邮件的身份集合。
-
-        这里**不能**只取「最后 N 封」：标签副本的追加顺序和收件箱顺序并不一致
-        （先标记的旧邮件会落在文件夹底部），截断窗口会把它们漏掉，
-        于是已经被处理过的邮件又被当成新工单——表现为「处理过的邮件复活」。
-        身份集合在一次 Gmail 实例内缓存，因为一轮 poll 里会被查好几遍。
-        """
+        """取标签文件夹里所有邮件的身份。必须全量扫描：截断窗口会让已处理的邮件复活。"""
         if label in self._label_cache:
             return self._label_cache[label]
         self._select(label)
@@ -456,11 +419,7 @@ class Gmail:
 
     @_with_reconnect
     def add_label_many(self, message_ids, name: str) -> int:
-        """批量打标签，用 UID 序列集一次提交，比逐个 add_label 快得多。
-
-        用途：poller 上线前把收件箱里已有的历史邮件一次性标成已处理，
-        避免机器人把它们当新工单、挨个回复。
-        """
+        """批量打标签，用 UID 序列集一次提交。"""
         if name not in self.label_ids:
             raise KeyError(f"未知标签 {name!r}")
         folder = self.label_ids[name]
@@ -475,11 +434,9 @@ class Gmail:
         self._label_cache.pop(name, None)
         return len(uids)
 
-    # -- 读 ----------------------------------------------------------------- #
 
     @_with_reconnect
     def list_new_message_ids(self, max_results: int = 10) -> list[str]:
-        """返回收件箱里还没打 ai-processed 标签的邮件，按到达顺序（旧→新）。"""
         conn = self._imap()
         window = max(max_results * 5, 50)
         self._select("INBOX")
@@ -508,11 +465,7 @@ class Gmail:
 
     @_with_reconnect
     def get_thread(self, thread_id: str, window: int = 300) -> dict:
-        """按会话根 Message-ID 找回整条会话。
-
-        QQ 邮箱的 SEARCH 会忽略条件，所以不能 `SEARCH HEADER REFERENCES`，
-        只能把最近 window 封邮件的头抓下来本地比对。
-        """
+        """按会话根 Message-ID 找回整条会话（客户端筛选，服务器搜索不可靠）。"""
         conn = self._imap()
         self._select("INBOX")
         uids = _uids(conn, "ALL")[-window:]
@@ -544,7 +497,6 @@ class Gmail:
         labelled = self._labelled_message_ids(ESCALATED_LABEL)
         return bool(identity_keys & labelled)
 
-    # -- 发 ----------------------------------------------------------------- #
 
     def _append(self, folder: str, raw: bytes) -> None:
         mailbox = folder if _FOLDER_SAFE.match(folder) else _qg(folder)
@@ -559,11 +511,10 @@ class Gmail:
         recipient = headers.get("reply-to") or headers.get("from", "")
         if not recipient:
             raise ValueError("这封邮件没有 From / Reply-To 头，无法回复")
-        subject = headers.get("subject", "")
         reply = EmailMessage()
         reply["From"] = self.address
         reply["To"] = recipient
-        reply["Subject"] = subject if subject.lower().startswith("re:") else f"Re: {subject}"
+        reply["Subject"] = _reply_subject(headers.get("subject", ""))
         parent_id = headers.get("message-id")
         if parent_id:
             reply["In-Reply-To"] = parent_id
@@ -605,9 +556,6 @@ class Gmail:
         return {"id": reply["Message-ID"], "threadId": message.get("threadId", "")}
 
 
-# --------------------------------------------------------------------------- #
-# 与课程同名同签名的模块级函数
-# --------------------------------------------------------------------------- #
 
 
 def get_headers(message: dict) -> dict[str, str]:
@@ -623,7 +571,6 @@ def has_attachments(message: dict) -> bool:
 
 
 def strip_quoted(text: str) -> str:
-    """去掉邮件客户端自动附带的被引用历史。"""
     lines: list[str] = []
     for line in text.splitlines():
         stripped = line.strip()
@@ -641,7 +588,6 @@ def strip_quoted(text: str) -> str:
 
 
 def format_thread(thread: dict, own_address: str) -> str:
-    """把整个会话渲染成纯文本，最早的邮件在前。"""
     messages = thread.get("messages") or []
     if not messages:
         return ""

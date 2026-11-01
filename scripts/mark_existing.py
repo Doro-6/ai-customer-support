@@ -1,13 +1,4 @@
-"""把收件箱里已有的历史邮件一次性标成 ai-processed。
-
-为什么需要它：poller 上线后会把「没有 ai-processed 标签」的邮件都当新工单处理。
-如果收件箱里还有几十封历史邮件（订阅、验证码、旧对话），机器人会挨个去回复。
-先跑这个脚本把它们标掉，poller 就从一个干净的状态开始。
-
-    uv run python -m scripts.mark_existing                 # 预演，只打印不修改
-    uv run python -m scripts.mark_existing --yes           # 真的标记
-    uv run python -m scripts.mark_existing --yes --keep-last 2   # 保留最近 2 封当测试样本
-"""
+"""把收件箱里已有的历史邮件一次性标成 ai-processed，避免 poller 当成新工单。"""
 
 from __future__ import annotations
 

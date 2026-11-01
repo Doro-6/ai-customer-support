@@ -1,8 +1,4 @@
-"""AI 环节的数据结构，来自课程 AI pipeline 页。
-
-模型只负责「填写事实」，不负责「决定动作」：Issue 里是它从邮件里读到的事实，
-最终发不发、发什么由 app/ai/rules.py 的纯 Python 逻辑决定。
-"""
+"""AI 环节的数据结构。模型只填事实，动作由 rules.py 决定。"""
 
 from typing import Literal
 

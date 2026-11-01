@@ -1,10 +1,4 @@
-"""起草 Agent：大模型通过工具读知识库，输出结构化回复建议。
-
-三道护栏都在这个文件里：
-1. 工具的 docstring 会作为 tool description 发给模型；
-2. get_section 用 ModelRetry 把「板块不存在」退回给模型，让它自己改；
-3. output_validator 拒绝空回复或提到 AI / knowledge base 的回复。
-"""
+"""起草 Agent：通过工具读知识库，输出结构化回复建议。"""
 
 from __future__ import annotations
 

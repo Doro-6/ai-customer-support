@@ -1,17 +1,4 @@
-"""Bot 的护栏：纯 Python 决定「这封信绝对不能回」。
-
-放在 AI 之前运行，和课程 app/guards.py 的逻辑保持一致。没有这一层，
-两个自动回复系统会互相回信直到有人发现——这不是假设，是真实事故。
-
-四个条件（任一命中就不回）：
-1. 自己发出的邮件（labelIds 含 SENT）
-2. 发件人就是自己的地址
-3. Auto-Submitted 不是 no（自动回复、退信，RFC 3834）
-4. Precedence 是 bulk / list / junk（群发、邮件列表）
-
-注意第 1 条对我们的 IMAP 实现是必需的，不是可选：
-`send_reply` 会把回复副本 APPEND 回 INBOX，靠这个标记才能识别出来。
-"""
+"""纯 Python 护栏：决定哪些邮件绝对不能回。"""
 
 from email.utils import parseaddr
 
