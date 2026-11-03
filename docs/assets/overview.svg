@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="376" viewBox="0 0 1280 376" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">AI customer support workflow</title>
+  <desc id="description">Classify incoming email, read knowledge through tools, apply Python business rules, then reply or hand the case to a human.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="376" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#102737"/>
+      <stop offset="1" stop-color="#0A1523"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <path d="M1 1L5 3.5L1 6" stroke="#74CBB8" stroke-width="1.5" fill="none"/>
+    </marker>
+  </defs>
+  <rect x="0.5" y="0.5" width="1279" height="375" rx="18" fill="url(#bg)" stroke="#294353"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <rect x="48" y="36" width="8" height="8" rx="4" fill="#7DDBC5"/>
+    <text x="68" y="45" fill="#8BDAC8" font-size="12" font-weight="600" letter-spacing="2">AI / EMAIL AUTOMATION</text>
+    <text x="1232" y="45" text-anchor="end" fill="#95ADBE" font-size="12" letter-spacing="1">PYTHON · FASTAPI · PYDANTIC AI</text>
+    <text x="48" y="112" fill="#F0F7FC" font-size="43" font-weight="650" letter-spacing="-1">Customer support, with a human handoff.</text>
+    <text x="48" y="153" fill="#ADC1D0" font-size="19">From an incoming email to a traceable reply or an actionable support ticket.</text>
+    <line x1="48" y1="188" x2="1232" y2="188" stroke="#294353"/>
+    <g>
+      <rect x="48" y="220" width="266" height="105" rx="12" fill="#152F40" stroke="#345365"/>
+      <text x="68" y="248" fill="#83B3C8" font-size="12" letter-spacing="1.5">01 / UNDERSTAND</text>
+      <text x="68" y="277" fill="#EDF6FC" font-size="20" font-weight="600">Classify the request</text>
+      <text x="68" y="303" fill="#A9C0CE" font-size="14">Structured category and intent</text>
+    </g>
+    <path d="M322 272H342" stroke="#74CBB8" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <g>
+      <rect x="354" y="220" width="266" height="105" rx="12" fill="#152F40" stroke="#345365"/>
+      <text x="374" y="248" fill="#83B3C8" font-size="12" letter-spacing="1.5">02 / GROUND</text>
+      <text x="374" y="277" fill="#EDF6FC" font-size="20" font-weight="600">Read knowledge</text>
+      <text x="374" y="303" fill="#A9C0CE" font-size="14">Policy sections through tools</text>
+    </g>
+    <path d="M628 272H648" stroke="#74CBB8" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <g>
+      <rect x="660" y="220" width="266" height="105" rx="12" fill="#163C3C" stroke="#72CDB7"/>
+      <text x="680" y="248" fill="#9BE4D2" font-size="12" letter-spacing="1.5">03 / DECIDE</text>
+      <text x="680" y="277" fill="#E6FFF5" font-size="20" font-weight="600">Apply Python rules</text>
+      <text x="680" y="303" fill="#B4D8CD" font-size="14">Select the business action</text>
+    </g>
+    <path d="M934 272H954" stroke="#74CBB8" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <g>
+      <rect x="966" y="220" width="266" height="105" rx="12" fill="#152F40" stroke="#345365"/>
+      <text x="986" y="248" fill="#83B3C8" font-size="12" letter-spacing="1.5">04 / FOLLOW THROUGH</text>
+      <text x="986" y="277" fill="#EDF6FC" font-size="20" font-weight="600">Reply or hand off</text>
+      <text x="986" y="303" fill="#A9C0CE" font-size="14">Store the decision and history</text>
+    </g>
+    <text x="48" y="353" fill="#7894A8" font-size="12">IMAP / SMTP</text>
+    <text x="1232" y="353" text-anchor="end" fill="#7894A8" font-size="12">POSTGRESQL · REACT · DOCKER</text>
+  </g>
+</svg>
